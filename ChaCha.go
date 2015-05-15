@@ -234,6 +234,144 @@ func ChaCha20(keystream *[64]byte, chachaGrid *[16]uint32) {
 	}
 }
 
+func ChaCha12(keystream *[64]byte, chachaGrid *[16]uint32) {
+	var x [16]uint32
+	var j uint32
+
+	// chacha use a 4 x 4 grid of uint32:
+	//
+	//   +-----+-----+-----+-----+
+	//   | x0  | x1  | x2  | x3  |
+	//   +-----+-----+-----+-----+
+	//   | x4  | x5  | x6  | x7  |
+	//   +-----+-----+-----+-----+
+	//   | x8  | x9  | x10 | x11 |
+	//   +-----+-----+-----+-----+
+	//   | x12 | x13 | x14 | x15 |
+	//   +-----+-----+-----+-----+
+	for i := 0; i < 16; i++ {
+		x[i] = chachaGrid[i]
+	}
+
+	// ChaCha12 consists of 12 rounds, alternating between "column" rounds and "diagonal" rounds.
+	// Each round applies the "quarterround" function four times, to a different set of words each time.
+	for i := 0; i < 6; i++ {
+
+		// QUARTER-ROUND on column 1:
+		x[0], x[4], x[8], x[12] = quarterround(x[0], x[4], x[8], x[12])
+
+		// QUARTER-ROUND on column 2:
+		x[1], x[5], x[9], x[13] = quarterround(x[1], x[5], x[9], x[13])
+
+		// QUARTER-ROUND on column 3:
+		x[2], x[6], x[10], x[14] = quarterround(x[2], x[6], x[10], x[14])
+
+		// QUARTER-ROUND on column 4:
+		x[3], x[7], x[11], x[15] = quarterround(x[3], x[7], x[11], x[15])
+
+		// QUARTER-ROUND on diagonal 1:
+		x[0], x[5], x[10], x[15] = quarterround(x[0], x[5], x[10], x[15])
+
+		// QUARTER-ROUND on diagonal 2:
+		x[1], x[6], x[11], x[12] = quarterround(x[1], x[6], x[11], x[12])
+
+		// QUARTER-ROUND on diagonal 3:
+		x[2], x[7], x[8], x[13] = quarterround(x[2], x[7], x[8], x[13])
+
+		// QUARTER-ROUND on diagonal 4:
+		x[3], x[4], x[9], x[14] = quarterround(x[3], x[4], x[9], x[14])
+	}
+
+	// After 20 rounds of the above processing, the original 16 input words are added to the 16 words to form the 16 output words.
+	for i := 0; i < 16; i++ {
+		x[i] += chachaGrid[i]
+	}
+
+	// The 64 output bytes are generated from the 16 output words by serialising them in little-endian order and concatenating the results.
+	for i := 0; i < 64; i += 4 {
+		j = x[i>>2]
+		keystream[i] = byte(j)
+		keystream[i+1] = byte(j >> 8)
+		keystream[i+2] = byte(j >> 16)
+		keystream[i+3] = byte(j >> 24)
+	}
+
+	// Input words 12 and 13 are a block counter, with word 12 overflowing into word 13.
+	chachaGrid[12]++
+	if chachaGrid[12] == 0 {
+		chachaGrid[13]++
+	}
+}
+
+func ChaCha8(keystream *[64]byte, chachaGrid *[16]uint32) {
+	var x [16]uint32
+	var j uint32
+
+	// chacha use a 4 x 4 grid of uint32:
+	//
+	//   +-----+-----+-----+-----+
+	//   | x0  | x1  | x2  | x3  |
+	//   +-----+-----+-----+-----+
+	//   | x4  | x5  | x6  | x7  |
+	//   +-----+-----+-----+-----+
+	//   | x8  | x9  | x10 | x11 |
+	//   +-----+-----+-----+-----+
+	//   | x12 | x13 | x14 | x15 |
+	//   +-----+-----+-----+-----+
+	for i := 0; i < 16; i++ {
+		x[i] = chachaGrid[i]
+	}
+
+	// ChaCha8 consists of 8 rounds, alternating between "column" rounds and "diagonal" rounds.
+	// Each round applies the "quarterround" function four times, to a different set of words each time.
+	for i := 0; i < 4; i++ {
+
+		// QUARTER-ROUND on column 1:
+		x[0], x[4], x[8], x[12] = quarterround(x[0], x[4], x[8], x[12])
+
+		// QUARTER-ROUND on column 2:
+		x[1], x[5], x[9], x[13] = quarterround(x[1], x[5], x[9], x[13])
+
+		// QUARTER-ROUND on column 3:
+		x[2], x[6], x[10], x[14] = quarterround(x[2], x[6], x[10], x[14])
+
+		// QUARTER-ROUND on column 4:
+		x[3], x[7], x[11], x[15] = quarterround(x[3], x[7], x[11], x[15])
+
+		// QUARTER-ROUND on diagonal 1:
+		x[0], x[5], x[10], x[15] = quarterround(x[0], x[5], x[10], x[15])
+
+		// QUARTER-ROUND on diagonal 2:
+		x[1], x[6], x[11], x[12] = quarterround(x[1], x[6], x[11], x[12])
+
+		// QUARTER-ROUND on diagonal 3:
+		x[2], x[7], x[8], x[13] = quarterround(x[2], x[7], x[8], x[13])
+
+		// QUARTER-ROUND on diagonal 4:
+		x[3], x[4], x[9], x[14] = quarterround(x[3], x[4], x[9], x[14])
+	}
+
+	// After 20 rounds of the above processing, the original 16 input words are added to the 16 words to form the 16 output words.
+	for i := 0; i < 16; i++ {
+		x[i] += chachaGrid[i]
+	}
+
+	// The 64 output bytes are generated from the 16 output words by serialising them in little-endian order and concatenating the results.
+	for i := 0; i < 64; i += 4 {
+		j = x[i>>2]
+		keystream[i] = byte(j)
+		keystream[i+1] = byte(j >> 8)
+		keystream[i+2] = byte(j >> 16)
+		keystream[i+3] = byte(j >> 24)
+	}
+
+	// Input words 12 and 13 are a block counter, with word 12 overflowing into word 13.
+	chachaGrid[12]++
+	if chachaGrid[12] == 0 {
+		chachaGrid[13]++
+	}
+}
+
 func main() {
 	var chachaGrid [16]uint32
 	var keystream [64]byte
@@ -245,27 +383,27 @@ func main() {
 
 	ChaChaInit(&chachaGrid, &key, &nonce)
 	ChaCha20(&keystream, &chachaGrid)
-	fmt.Printf("\nkey        : %x\nnonce      : %x\nkey-stream : %x\n", key, nonce, keystream)
+	fmt.Printf("\nkey        : %x\nnonce      : %x\nChaCha20   : %x\n", key, nonce, keystream)
 	fmt.Printf("Waiting val: 76b8e0ada0f13d90405d6ae55386bd28bdd219b8a08ded1aa836efcc8b770dc7da41597c5157488d7724e03fb8d84a376a43b8f41518a11cc387b669b2ee6586\n")
 
 	key[31] = 1
 	ChaChaInit(&chachaGrid, &key, &nonce)
 	ChaCha20(&keystream, &chachaGrid)
-	fmt.Printf("\nkey        : %x\nnonce      : %x\nkey-stream : %x\n", key, nonce, keystream)
+	fmt.Printf("\nkey        : %x\nnonce      : %x\nChaCha20   : %x\n", key, nonce, keystream)
 	fmt.Printf("Waiting val: 4540f05a9f1fb296d7736e7b208e3c96eb4fe1834688d2604f450952ed432d41bbe2a0b6ea7566d2a5d1e7e20d42af2c53d792b1c43fea817e9ad275ae546963\n")
 
 	key[31] = 0
 	nonce[7] = 1
 	ChaChaInit(&chachaGrid, &key, &nonce)
 	ChaCha20(&keystream, &chachaGrid)
-	fmt.Printf("\nkey        : %x\nnonce      : %x\nkey-stream : %x\n", key, nonce, keystream)
+	fmt.Printf("\nkey        : %x\nnonce      : %x\nChaCha20   : %x\n", key, nonce, keystream)
 	fmt.Printf("Waiting val: de9cba7bf3d69ef5e786dc63973f653a0b49e015adbff7134fcb7df137821031e85a050278a7084527214f73efc7fa5b5277062eb7a0433e445f41e31afab757\n")
 
 	nonce[7] = 0
 	nonce[0] = 1
 	ChaChaInit(&chachaGrid, &key, &nonce)
 	ChaCha20(&keystream, &chachaGrid)
-	fmt.Printf("\nkey        : %x\nnonce      : %x\nkey-stream : %x\n", key, nonce, keystream)
+	fmt.Printf("\nkey        : %x\nnonce      : %x\nChaCha20   : %x\n", key, nonce, keystream)
 	fmt.Printf("Waiting val: ef3fdfd6c61578fbf5cf35bd3dd33b8009631634d21e42ac33960bd138e50d32111e4caf237ee53ca8ad6426194a88545ddc497a0b466e7d6bbdb0041b2f586b\n")
 
 	key = [32]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0X09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -273,7 +411,7 @@ func main() {
 	nonce = [8]byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}
 	ChaChaInit(&chachaGrid, &key, &nonce)
 	ChaCha20(&keystream, &chachaGrid)
-	fmt.Printf("\nkey        : %x\nnonce      : %x\nkey-stream : %x\n", key, nonce, keystream)
+	fmt.Printf("\nkey        : %x\nnonce      : %x\nChaCha20   : %x\n", key, nonce, keystream)
 	ChaCha20(&keystream, &chachaGrid)
 	fmt.Printf("             %x\n", keystream)
 	ChaCha20(&keystream, &chachaGrid)
